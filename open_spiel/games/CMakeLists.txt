@@ -72,6 +72,8 @@ set(GAME_SOURCES
   matching_pennies_3p.cc
   matching_pennies_3p.h
   matrix_games.cc
+  mudcrack_y.cc
+  mudcrack_y.h
   negotiation.cc
   negotiation.h
   oshi_zumo.cc

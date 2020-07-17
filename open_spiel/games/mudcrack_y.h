@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef OPEN_SPIEL_GAMES_Y_H_
-#define OPEN_SPIEL_GAMES_Y_H_
+#ifndef OPEN_SPIEL_GAMES_MUDCRACK_Y_H_
+#define OPEN_SPIEL_GAMES_MUDCRACK_Y_H_
 
 #include <array>
 #include <cstdint>
@@ -32,7 +32,7 @@
 //   "ansi_color_output" bool    Whether to color the output for a terminal.
 
 namespace open_spiel {
-namespace y_game {
+namespace mudcrack_y_game {
 
 inline constexpr int kNumPlayers = 2;
 inline constexpr int kDefaultBoardSize = 19;
@@ -40,7 +40,7 @@ inline constexpr int kMaxNeighbors =
     6;  // Maximum number of neighbors for a cell
 inline constexpr int kCellStates = 1 + kNumPlayers;
 
-enum YPlayer : uint8_t {
+enum MudcrackYPlayer : uint8_t {
   kPlayer1,
   kPlayer2,
   kPlayerNone,
@@ -90,7 +90,7 @@ struct Move {
 typedef std::vector<std::array<Move, kMaxNeighbors>> NeighborList;
 
 // State of an in-play game.
-class YState : public State {
+class MudcrackYState : public State {
   // Represents a single cell on the board, as well as the structures needed for
   // groups of cells. Groups of cells are defined by a union-find structure
   // embedded in the array of cells. Following the `parent` indices will lead to
@@ -99,7 +99,7 @@ class YState : public State {
   // cell that is not a group leader.
   struct Cell {
     // Who controls this cell.
-    YPlayer player;
+    MudcrackYPlayer player;
 
     // A parent index to allow finding the group leader. It is the leader of the
     // group if it points to itself. Allows path compression to shorten the path
@@ -111,15 +111,15 @@ class YState : public State {
     uint8_t edge;   // A bitset of which edges this group is connected to.
 
     Cell() {}
-    Cell(YPlayer player_, int parent_, int edge_)
+    Cell(MudcrackYPlayer player_, int parent_, int edge_)
         : player(player_), parent(parent_), size(1), edge(edge_) {}
   };
 
  public:
-  YState(std::shared_ptr<const Game> game, int board_size,
+  MudcrackYState(std::shared_ptr<const Game> game, int board_size,
          bool ansi_color_output = false);
 
-  YState(const YState&) = default;
+  MudcrackYState(const MudcrackYState&) = default;
 
   Player CurrentPlayer() const override {
     return IsTerminal() ? kTerminalPlayerId : static_cast<int>(current_player_);
@@ -153,8 +153,8 @@ class YState : public State {
 
  private:
   std::vector<Cell> board_;
-  YPlayer current_player_ = kPlayer1;
-  YPlayer outcome_ = kPlayerNone;
+  MudcrackYPlayer current_player_ = kPlayer1;
+  MudcrackYPlayer outcome_ = kPlayerNone;
   const int board_size_;
   int moves_made_ = 0;
   Move last_move_ = kMoveNone;
@@ -163,9 +163,9 @@ class YState : public State {
 };
 
 // Game object.
-class YGame : public Game {
+class MudcrackYGame : public Game {
  public:
-  explicit YGame(const GameParameters& params);
+  explicit MudcrackYGame(const GameParameters& params);
 
   int NumDistinctActions() const override {
     // Really size*(size+1)/2, but that's harder to represent, so the extra
@@ -174,14 +174,14 @@ class YGame : public Game {
   }
   std::unique_ptr<State> NewInitialState() const override {
     return std::unique_ptr<State>(
-        new YState(shared_from_this(), board_size_, ansi_color_output_));
+        new MudcrackYState(shared_from_this(), board_size_, ansi_color_output_));
   }
   int NumPlayers() const override { return kNumPlayers; }
   double MinUtility() const override { return -1; }
   double UtilitySum() const override { return 0; }
   double MaxUtility() const override { return 1; }
   std::shared_ptr<const Game> Clone() const override {
-    return std::shared_ptr<const Game>(new YGame(*this));
+    return std::shared_ptr<const Game>(new MudcrackYGame(*this));
   }
   std::vector<int> ObservationTensorShape() const override {
     return {kCellStates, board_size_, board_size_};
@@ -198,7 +198,7 @@ class YGame : public Game {
   const bool ansi_color_output_ = false;
 };
 
-}  // namespace y_game
+}  // namespace mudcrack_y_game
 }  // namespace open_spiel
 
-#endif  // OPEN_SPIEL_GAMES_Y_H_
+#endif  // OPEN_SPIEL_GAMES_MUDCRACK_Y_H_

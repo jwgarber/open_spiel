@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "open_spiel/games/y.h"
+#include "open_spiel/games/mudcrack_y.h"
 
 #include <algorithm>
 #include <memory>
@@ -23,12 +23,12 @@
 #include "open_spiel/utils/tensor_view.h"
 
 namespace open_spiel {
-namespace y_game {
+namespace mudcrack_y_game {
 namespace {
 
 // Facts about the game.
-const GameType kGameType{/*short_name=*/"y",
-                         /*long_name=*/"Y Connection Game",
+const GameType kGameType{/*short_name=*/"mudcrack_y",
+                         /*long_name=*/"Mudcrack Y Connection Game",
                          GameType::Dynamics::kSequential,
                          GameType::ChanceMode::kDeterministic,
                          GameType::Information::kPerfectInformation,
@@ -47,7 +47,7 @@ const GameType kGameType{/*short_name=*/"y",
                          }};
 
 std::shared_ptr<const Game> Factory(const GameParameters& params) {
-  return std::shared_ptr<const Game>(new YGame(params));
+  return std::shared_ptr<const Game>(new MudcrackYGame(params));
 }
 
 REGISTER_SPIEL_GAME(kGameType, Factory);
@@ -113,7 +113,7 @@ std::string Move::ToString() const {
   return absl::StrCat(std::string(1, static_cast<char>('a' + x)), y + 1);
 }
 
-YState::YState(std::shared_ptr<const Game> game, int board_size,
+MudcrackYState::MudcrackYState(std::shared_ptr<const Game> game, int board_size,
                bool ansi_color_output)
     : State(game),
       board_size_(board_size),
@@ -127,11 +127,11 @@ YState::YState(std::shared_ptr<const Game> game, int board_size,
   }
 }
 
-Move YState::ActionToMove(Action action_id) const {
+Move MudcrackYState::ActionToMove(Action action_id) const {
   return Move(action_id % board_size_, action_id / board_size_, board_size_);
 }
 
-std::vector<Action> YState::LegalActions() const {
+std::vector<Action> MudcrackYState::LegalActions() const {
   // Can move in any empty cell.
   std::vector<Action> moves;
   if (IsTerminal()) return moves;
@@ -144,11 +144,11 @@ std::vector<Action> YState::LegalActions() const {
   return moves;
 }
 
-std::string YState::ActionToString(Player player, Action action_id) const {
+std::string MudcrackYState::ActionToString(Player player, Action action_id) const {
   return ActionToMove(action_id).ToString();
 }
 
-std::string YState::ToString() const {
+std::string MudcrackYState::ToString() const {
   // Generates something like:
   //  a b c d e f g h i j k
   // 1 O @ O O . @ @ O O @ O
@@ -220,25 +220,25 @@ std::string YState::ToString() const {
   return out.str();
 }
 
-std::vector<double> YState::Returns() const {
+std::vector<double> MudcrackYState::Returns() const {
   if (outcome_ == kPlayer1) return {1, -1};
   if (outcome_ == kPlayer2) return {-1, 1};
   return {0, 0};  // Unfinished
 }
 
-std::string YState::InformationStateString(Player player) const {
+std::string MudcrackYState::InformationStateString(Player player) const {
   SPIEL_CHECK_GE(player, 0);
   SPIEL_CHECK_LT(player, num_players_);
   return HistoryString();
 }
 
-std::string YState::ObservationString(Player player) const {
+std::string MudcrackYState::ObservationString(Player player) const {
   SPIEL_CHECK_GE(player, 0);
   SPIEL_CHECK_LT(player, num_players_);
   return ToString();
 }
 
-int PlayerRelative(YPlayer state, Player current) {
+int PlayerRelative(MudcrackYPlayer state, Player current) {
   switch (state) {
     case kPlayer1:
       return current == 0 ? 0 : 1;
@@ -251,7 +251,7 @@ int PlayerRelative(YPlayer state, Player current) {
   }
 }
 
-void YState::ObservationTensor(Player player,
+void MudcrackYState::ObservationTensor(Player player,
                                std::vector<double>* values) const {
   SPIEL_CHECK_GE(player, 0);
   SPIEL_CHECK_LT(player, num_players_);
@@ -265,7 +265,7 @@ void YState::ObservationTensor(Player player,
   }
 }
 
-void YState::DoApplyAction(Action action) {
+void MudcrackYState::DoApplyAction(Action action) {
   SPIEL_CHECK_EQ(board_[action].player, kPlayerNone);
   SPIEL_CHECK_EQ(outcome_, kPlayerNone);
 
@@ -289,7 +289,7 @@ void YState::DoApplyAction(Action action) {
   current_player_ = (current_player_ == kPlayer1 ? kPlayer2 : kPlayer1);
 }
 
-int YState::FindGroupLeader(int cell) {
+int MudcrackYState::FindGroupLeader(int cell) {
   int parent = board_[cell].parent;
   if (parent != cell) {
     do {  // Follow the parent chain up to the group leader.
@@ -301,7 +301,7 @@ int YState::FindGroupLeader(int cell) {
   return parent;
 }
 
-bool YState::JoinGroups(int cell_a, int cell_b) {
+bool MudcrackYState::JoinGroups(int cell_a, int cell_b) {
   int leader_a = FindGroupLeader(cell_a);
   int leader_b = FindGroupLeader(cell_b);
 
@@ -321,14 +321,14 @@ bool YState::JoinGroups(int cell_a, int cell_b) {
   return false;
 }
 
-std::unique_ptr<State> YState::Clone() const {
-  return std::unique_ptr<State>(new YState(*this));
+std::unique_ptr<State> MudcrackYState::Clone() const {
+  return std::unique_ptr<State>(new MudcrackYState(*this));
 }
 
-YGame::YGame(const GameParameters& params)
+MudcrackYGame::MudcrackYGame(const GameParameters& params)
     : Game(kGameType, params),
       board_size_(ParameterValue<int>("board_size")),
       ansi_color_output_(ParameterValue<bool>("ansi_color_output")) {}
 
-}  // namespace y_game
+}  // namespace mudcrack_y_game
 }  // namespace open_spiel

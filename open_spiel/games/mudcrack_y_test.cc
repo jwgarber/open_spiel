@@ -17,34 +17,34 @@
 #include "open_spiel/tests/basic_tests.h"
 
 namespace open_spiel {
-namespace y_game {
+namespace mudcrack_y_game {
 namespace {
 
 namespace testing = open_spiel::testing;
 
-void BasicYTests() {
-  testing::LoadGameTest("y(board_size=9)");
-  testing::NoChanceOutcomesTest(*LoadGame("y(board_size=9)"));
+void BasicMudcrackYTests() {
+  testing::LoadGameTest("mudcrack_y(board_size=9)");
+  testing::NoChanceOutcomesTest(*LoadGame("mudcrack_y(board_size=9)"));
 
-  testing::RandomSimTest(*LoadGame("y"), 10);
+  testing::RandomSimTest(*LoadGame("mudcrack_y"), 10);
 
   // All the sizes we care about.
   for (int i = 5; i <= 26; i++) {
-    testing::RandomSimTest(*LoadGame(absl::StrCat("y(board_size=", i, ")")),
+    testing::RandomSimTest(*LoadGame(absl::StrCat("mudcrack_y(board_size=", i, ")")),
                            10);
   }
 
   // Ansi colors!
   testing::RandomSimTest(
-      *LoadGame("y", {{"board_size", GameParameter(9)},
+      *LoadGame("mudcrack_y", {{"board_size", GameParameter(9)},
                       {"ansi_color_output", GameParameter(true)}}),
       1);
-  testing::RandomSimTest(*LoadGame("y(board_size=10,ansi_color_output=True)"),
+  testing::RandomSimTest(*LoadGame("mudcrack_y(board_size=10,ansi_color_output=True)"),
                          3);
 }
 
 }  // namespace
-}  // namespace y_game
+}  // namespace mudcrack_y_game
 }  // namespace open_spiel
 
-int main(int argc, char** argv) { open_spiel::y_game::BasicYTests(); }
+int main(int argc, char** argv) { open_spiel::mudcrack_y_game::BasicMudcrackYTests(); }

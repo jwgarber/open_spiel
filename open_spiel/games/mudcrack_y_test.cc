@@ -26,6 +26,7 @@ void BasicMudcrackYTests() {
   testing::LoadGameTest("mudcrack_y(board_size=9)");
   testing::NoChanceOutcomesTest(*LoadGame("mudcrack_y(board_size=9)"));
 
+#if 0
   testing::RandomSimTest(*LoadGame("mudcrack_y"), 10);
 
   // All the sizes we care about.
@@ -41,6 +42,7 @@ void BasicMudcrackYTests() {
       1);
   testing::RandomSimTest(*LoadGame("mudcrack_y(board_size=10,ansi_color_output=True)"),
                          3);
+#endif
 }
 
 }  // namespace

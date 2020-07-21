@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "open_spiel/games/mudcrack_y.h"
+#include "open_spiel/games/geodesic_y.h"
 
 #include <algorithm>
 #include <memory>
@@ -23,12 +23,12 @@
 #include "open_spiel/utils/tensor_view.h"
 
 namespace open_spiel {
-namespace mudcrack_y_game {
+namespace geodesic_y_game {
 namespace {
 
 // Facts about the game.
-const GameType kGameType{/*short_name=*/"mudcrack_y",
-                         /*long_name=*/"Mudcrack Y Connection Game",
+const GameType kGameType{/*short_name=*/"geodesic_y",
+                         /*long_name=*/"Geodesic Y Connection Game",
                          GameType::Dynamics::kSequential,
                          GameType::ChanceMode::kDeterministic,
                          GameType::Information::kPerfectInformation,
@@ -47,7 +47,7 @@ const GameType kGameType{/*short_name=*/"mudcrack_y",
                          }};
 
 std::shared_ptr<const Game> Factory(const GameParameters& params) {
-  return std::shared_ptr<const Game>(new MudcrackYGame(params));
+  return std::shared_ptr<const Game>(new GeodesicYGame(params));
 }
 
 REGISTER_SPIEL_GAME(kGameType, Factory);
@@ -82,7 +82,7 @@ std::string Move::ToString() const {
   return std::to_string(node);
 }
 
-MudcrackYState::MudcrackYState(std::shared_ptr<const Game> game, int board_size,
+GeodesicYState::GeodesicYState(std::shared_ptr<const Game> game, int board_size,
                bool ansi_color_output)
     : State(game),
       board_size_(board_size),
@@ -94,11 +94,11 @@ MudcrackYState::MudcrackYState(std::shared_ptr<const Game> game, int board_size,
   }
 }
 
-Move MudcrackYState::ActionToMove(Action action_id) const {
+Move GeodesicYState::ActionToMove(Action action_id) const {
   return Move(action_id);
 }
 
-std::vector<Action> MudcrackYState::LegalActions() const {
+std::vector<Action> GeodesicYState::LegalActions() const {
   // Can move in any empty cell.
   std::vector<Action> moves;
   if (IsTerminal()) return moves;
@@ -111,12 +111,12 @@ std::vector<Action> MudcrackYState::LegalActions() const {
   return moves;
 }
 
-std::string MudcrackYState::ActionToString(Player player, Action action_id) const {
+std::string GeodesicYState::ActionToString(Player player, Action action_id) const {
   return ActionToMove(action_id).ToString();
 }
 
 #if 0
-std::string MudcrackYState::ToString() const {
+std::string GeodesicYState::ToString() const {
   // Generates something like:
   //  a b c d e f g h i j k
   // 1 O @ O O . @ @ O O @ O
@@ -189,7 +189,7 @@ std::string MudcrackYState::ToString() const {
 }
 #endif
 
-std::string MudcrackYState::ToString() const {
+std::string GeodesicYState::ToString() const {
   std::ostringstream out{};
 
   out << "black: ";
@@ -211,25 +211,25 @@ std::string MudcrackYState::ToString() const {
   return out.str();
 }
 
-std::vector<double> MudcrackYState::Returns() const {
+std::vector<double> GeodesicYState::Returns() const {
   if (outcome_ == kPlayer1) return {1, -1};
   if (outcome_ == kPlayer2) return {-1, 1};
   return {0, 0};  // Unfinished
 }
 
-std::string MudcrackYState::InformationStateString(Player player) const {
+std::string GeodesicYState::InformationStateString(Player player) const {
   SPIEL_CHECK_GE(player, 0);
   SPIEL_CHECK_LT(player, num_players_);
   return HistoryString();
 }
 
-std::string MudcrackYState::ObservationString(Player player) const {
+std::string GeodesicYState::ObservationString(Player player) const {
   SPIEL_CHECK_GE(player, 0);
   SPIEL_CHECK_LT(player, num_players_);
   return ToString();
 }
 
-int PlayerRelative(MudcrackYPlayer state, Player current) {
+int PlayerRelative(GeodesicYPlayer state, Player current) {
   switch (state) {
     case kPlayer1:
       return current == 0 ? 0 : 1;
@@ -242,7 +242,7 @@ int PlayerRelative(MudcrackYPlayer state, Player current) {
   }
 }
 
-void MudcrackYState::ObservationTensor(Player player,
+void GeodesicYState::ObservationTensor(Player player,
                                std::vector<double>* values) const {
   SPIEL_CHECK_GE(player, 0);
   SPIEL_CHECK_LT(player, num_players_);
@@ -254,7 +254,7 @@ void MudcrackYState::ObservationTensor(Player player,
   }
 }
 
-void MudcrackYState::DoApplyAction(Action action) {
+void GeodesicYState::DoApplyAction(Action action) {
   SPIEL_CHECK_EQ(board_.at(action).player, kPlayerNone);
   SPIEL_CHECK_EQ(outcome_, kPlayerNone);
 
@@ -278,7 +278,7 @@ void MudcrackYState::DoApplyAction(Action action) {
   current_player_ = (current_player_ == kPlayer1 ? kPlayer2 : kPlayer1);
 }
 
-Node MudcrackYState::FindGroupLeader(Node cell) {
+Node GeodesicYState::FindGroupLeader(Node cell) {
   Node parent = board_.at(cell).parent;
   if (parent != cell) {
     do {  // Follow the parent chain up to the group leader.
@@ -290,7 +290,7 @@ Node MudcrackYState::FindGroupLeader(Node cell) {
   return parent;
 }
 
-bool MudcrackYState::JoinGroups(Node cell_a, Node cell_b) {
+bool GeodesicYState::JoinGroups(Node cell_a, Node cell_b) {
   Node leader_a = FindGroupLeader(cell_a);
   Node leader_b = FindGroupLeader(cell_b);
 
@@ -310,14 +310,14 @@ bool MudcrackYState::JoinGroups(Node cell_a, Node cell_b) {
   return false;
 }
 
-std::unique_ptr<State> MudcrackYState::Clone() const {
-  return std::unique_ptr<State>(new MudcrackYState(*this));
+std::unique_ptr<State> GeodesicYState::Clone() const {
+  return std::unique_ptr<State>(new GeodesicYState(*this));
 }
 
-MudcrackYGame::MudcrackYGame(const GameParameters& params)
+GeodesicYGame::GeodesicYGame(const GameParameters& params)
     : Game(kGameType, params),
       board_size_(ParameterValue<int>("board_size")),
       ansi_color_output_(ParameterValue<bool>("ansi_color_output")) {}
 
-}  // namespace mudcrack_y_game
+}  // namespace geodesic_y_game
 }  // namespace open_spiel

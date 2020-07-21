@@ -52,83 +52,50 @@ std::shared_ptr<const Game> Factory(const GameParameters& params) {
 
 REGISTER_SPIEL_GAME(kGameType, Factory);
 
-// The board is represented as a flattened 2d array of the form:
-//   1 2 3
-// A 0 1 2     0 1 2     0 1 2
-// B 3 4 5 <=> 3 4   <=>  3 4
-// C 6 7 8     6           6
-//
-// Neighbors are laid out in this pattern:
-//   0   1           0  1
-// 5   X   2 <=>  5  X  2
-//   4   3        4  3
-
-// Direct neighbors of a cell, clockwise.
-constexpr std::array<Move, kMaxNeighbors> neighbor_offsets = {
-    Move(0, -1, kMoveOffset), Move(1, -1, kMoveOffset),
-    Move(1, 0, kMoveOffset),  Move(0, 1, kMoveOffset),
-    Move(-1, 1, kMoveOffset), Move(-1, 0, kMoveOffset),
-};
-
-// Precomputed list of neighbors per board_size: [board_size][cell][direction]
-std::vector<NeighborList> neighbor_list;
-
-NeighborList gen_neighbors(int board_size) {
-  NeighborList out;
-  out.resize(board_size * board_size);
-  for (int y = 0; y < board_size; y++) {
-    for (int x = 0; x < board_size; x++) {
-      int xy = x + y * board_size;  // Don't use Move.xy so it works off-board.
-      for (int dir = 0; dir < neighbor_offsets.size(); dir++) {
-        Move offset = neighbor_offsets[dir];
-        out[xy][dir] = Move(x + offset.x, y + offset.y, board_size);
-      }
-    }
-  }
-  return out;
-}
-
-const NeighborList& get_neighbors(int board_size) {
-  if (board_size >= neighbor_list.size()) {
-    neighbor_list.resize(board_size + 1);
-  }
-  if (neighbor_list[board_size].empty()) {
-    neighbor_list[board_size] = gen_neighbors(board_size);
-  }
-  return neighbor_list[board_size];
-}
-
 }  // namespace
 
-int Move::Edge(int board_size) const {
-  if (!OnBoard()) return 0;
+// Neighbors for base3 geodesic Y (the default game)
+static const Neighbors neighbors = {
+  {1, 2, 3, 4, 8},
+  {0, 2, 4, 5, 6},
+  {0, 1, 6, 7, 8},
+  {0, 4, 8},
+  {0, 1, 3, 5},
+  {1, 4, 6},
+  {1, 2, 5, 7},
+  {2, 6, 8},
+  {0, 2, 3, 7},
+};
 
-  return (x == 0 ? (1 << 0) : 0) | (y == 0 ? (1 << 1) : 0) |
-         (x + y == board_size - 1 ? (1 << 2) : 0);
-}
+// The board edges that each node touches.
+static const std::vector<Edge> edges = {
+  kNone, kNone, kNone,
+  (Edge)(kRight | kLeft),
+  kRight,
+  (Edge)(kRight | kBottom),
+  kBottom,
+  (Edge)(kBottom | kLeft),
+  kLeft,
+};
 
 std::string Move::ToString() const {
-  if (xy == kMoveUnknown) return "unknown";
-  if (xy == kMoveNone) return "none";
-  return absl::StrCat(std::string(1, static_cast<char>('a' + x)), y + 1);
+  return std::to_string(node);
 }
 
 MudcrackYState::MudcrackYState(std::shared_ptr<const Game> game, int board_size,
                bool ansi_color_output)
     : State(game),
       board_size_(board_size),
-      neighbors(get_neighbors(board_size)),
+      neighbors_(neighbors),
       ansi_color_output_(ansi_color_output) {
-  board_.resize(board_size * board_size);
-  for (int i = 0; i < board_.size(); i++) {
-    Move m = ActionToMove(i);
-    board_[i] = Cell((m.OnBoard() ? kPlayerNone : kPlayerInvalid), i,
-                     m.Edge(board_size));
+  board_.resize(board_size_);
+  for (Node i = 0; i < board_.size(); i++) {
+    board_.at(i) = Cell(kPlayerNone, i, edges.at(i));
   }
 }
 
 Move MudcrackYState::ActionToMove(Action action_id) const {
-  return Move(action_id % board_size_, action_id / board_size_, board_size_);
+  return Move(action_id);
 }
 
 std::vector<Action> MudcrackYState::LegalActions() const {
@@ -136,8 +103,8 @@ std::vector<Action> MudcrackYState::LegalActions() const {
   std::vector<Action> moves;
   if (IsTerminal()) return moves;
   moves.reserve(board_.size() - moves_made_);
-  for (int cell = 0; cell < board_.size(); ++cell) {
-    if (board_[cell].player == kPlayerNone) {
+  for (Node cell = 0; cell < board_.size(); ++cell) {
+    if (board_.at(cell).player == kPlayerNone) {
       moves.push_back(cell);
     }
   }
@@ -148,6 +115,7 @@ std::string MudcrackYState::ActionToString(Player player, Action action_id) cons
   return ActionToMove(action_id).ToString();
 }
 
+#if 0
 std::string MudcrackYState::ToString() const {
   // Generates something like:
   //  a b c d e f g h i j k
@@ -219,6 +187,29 @@ std::string MudcrackYState::ToString() const {
   out << reset;
   return out.str();
 }
+#endif
+
+std::string MudcrackYState::ToString() const {
+  std::ostringstream out{};
+
+  out << "black: ";
+  for (Node i = 0; i < board_.size(); ++i) {
+    if (board_.at(i).player == kPlayer1) {
+      out << i << ' ';
+    }
+  }
+  out << '\n';
+
+  out << "white: ";
+  for (Node i = 0; i < board_.size(); ++i) {
+    if (board_.at(i).player == kPlayer2) {
+      out << i << ' ';
+    }
+  }
+  out << '\n';
+
+  return out.str();
+}
 
 std::vector<double> MudcrackYState::Returns() const {
   if (outcome_ == kPlayer1) return {1, -1};
@@ -258,65 +249,63 @@ void MudcrackYState::ObservationTensor(Player player,
 
   TensorView<2> view(values, {kCellStates, static_cast<int>(board_.size())},
                      true);
-  for (int i = 0; i < board_.size(); ++i) {
-    if (board_[i].player != kPlayerInvalid) {
-      view[{PlayerRelative(board_[i].player, player), i}] = 1.0;
-    }
+  for (Node i = 0; i < board_.size(); ++i) {
+    view[{PlayerRelative(board_.at(i).player, player), i}] = 1.0;
   }
 }
 
 void MudcrackYState::DoApplyAction(Action action) {
-  SPIEL_CHECK_EQ(board_[action].player, kPlayerNone);
+  SPIEL_CHECK_EQ(board_.at(action).player, kPlayerNone);
   SPIEL_CHECK_EQ(outcome_, kPlayerNone);
 
   Move move = ActionToMove(action);
-  SPIEL_CHECK_TRUE(move.OnBoard());
 
   last_move_ = move;
-  board_[move.xy].player = current_player_;
+  board_.at(move.node).player = current_player_;
   moves_made_++;
 
-  for (const Move& m : neighbors[move.xy]) {
-    if (m.OnBoard() && current_player_ == board_[m.xy].player) {
-      JoinGroups(move.xy, m.xy);
+  for (Node nhbr : neighbors_.at(move.node)) {
+    if (current_player_ == board_.at(nhbr).player) {
+      JoinGroups(move.node, nhbr);
     }
   }
 
-  if (board_[FindGroupLeader(move.xy)].edge == 0x7) {  // ie all 3 edges.
+  // Check if the current player has won the game
+  if (board_.at(FindGroupLeader(move.node)).edge == (kRight | kBottom | kLeft)) {
     outcome_ = current_player_;
   }
 
   current_player_ = (current_player_ == kPlayer1 ? kPlayer2 : kPlayer1);
 }
 
-int MudcrackYState::FindGroupLeader(int cell) {
-  int parent = board_[cell].parent;
+Node MudcrackYState::FindGroupLeader(Node cell) {
+  Node parent = board_.at(cell).parent;
   if (parent != cell) {
     do {  // Follow the parent chain up to the group leader.
-      parent = board_[parent].parent;
-    } while (parent != board_[parent].parent);
+      parent = board_.at(parent).parent;
+    } while (parent != board_.at(parent).parent);
     // Do path compression, but only the current one to avoid recursion.
-    board_[cell].parent = parent;
+    board_.at(cell).parent = parent;
   }
   return parent;
 }
 
-bool MudcrackYState::JoinGroups(int cell_a, int cell_b) {
-  int leader_a = FindGroupLeader(cell_a);
-  int leader_b = FindGroupLeader(cell_b);
+bool MudcrackYState::JoinGroups(Node cell_a, Node cell_b) {
+  Node leader_a = FindGroupLeader(cell_a);
+  Node leader_b = FindGroupLeader(cell_b);
 
   if (leader_a == leader_b)  // Already the same group.
     return true;
 
-  if (board_[leader_a].size < board_[leader_b].size) {
+  if (board_.at(leader_a).size < board_.at(leader_b).size) {
     // Force group a's subtree to be bigger.
     std::swap(leader_a, leader_b);
   }
 
   // Group b joins group a.
-  board_[leader_b].parent = leader_a;
-  board_[leader_a].size += board_[leader_b].size;
-  board_[leader_a].edge |= board_[leader_b].edge;
+  board_.at(leader_b).parent = leader_a;
+  board_.at(leader_a).size += board_.at(leader_b).size;
+  board_.at(leader_a).edge |= board_.at(leader_b).edge;
 
   return false;
 }

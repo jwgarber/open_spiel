@@ -320,6 +320,10 @@ add_executable(matrix_games_test matrix_games_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(matrix_games_test matrix_games_test)
 
+add_executable(mudcrack_y_test mudcrack_y_test.cc ${OPEN_SPIEL_OBJECTS}
+               $<TARGET_OBJECTS:tests>)
+add_test(mudcrack_y_test mudcrack_y_test)
+
 add_executable(negotiation_test negotiation_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>
                $<TARGET_OBJECTS:algorithms>)

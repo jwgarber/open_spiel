@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef OPEN_SPIEL_GAMES_MUDCRACK_Y_H_
-#define OPEN_SPIEL_GAMES_MUDCRACK_Y_H_
+#ifndef OPEN_SPIEL_GAMES_GEODESIC_Y_H_
+#define OPEN_SPIEL_GAMES_GEODESIC_Y_H_
 
 #include <array>
 #include <cstdint>
@@ -32,7 +32,7 @@
 //   "ansi_color_output" bool    Whether to color the output for a terminal.
 
 namespace open_spiel {
-namespace mudcrack_y_game {
+namespace geodesic_y_game {
 
 // Integer type that labels nodes in the graph
 using Node = uint16_t;
@@ -45,7 +45,7 @@ inline constexpr int kNumPlayers = 2;
 inline constexpr int kDefaultBoardSize = 9;
 inline constexpr int kCellStates = 1 + kNumPlayers;
 
-enum MudcrackYPlayer : uint8_t {
+enum GeodesicYPlayer : uint8_t {
   kPlayer1,
   kPlayer2,
   kPlayerNone,
@@ -70,7 +70,7 @@ struct Move {
 };
 
 // State of an in-play game.
-class MudcrackYState : public State {
+class GeodesicYState : public State {
   // Represents a single cell on the board, as well as the structures needed for
   // groups of cells. Groups of cells are defined by a union-find structure
   // embedded in the array of cells. Following the `parent` indices will lead to
@@ -79,7 +79,7 @@ class MudcrackYState : public State {
   // cell that is not a group leader.
   struct Cell {
     // Who controls this cell.
-    MudcrackYPlayer player;
+    GeodesicYPlayer player;
 
     // A parent index to allow finding the group leader. It is the leader of the
     // group if it points to itself. Allows path compression to shorten the path
@@ -91,15 +91,15 @@ class MudcrackYState : public State {
     uint8_t edge;   // A bitset of which edges this group is connected to.
 
     Cell() {}
-    Cell(MudcrackYPlayer player_, Node parent_, Edge edge_)
+    Cell(GeodesicYPlayer player_, Node parent_, Edge edge_)
         : player(player_), parent(parent_), size(1), edge(edge_) {}
   };
 
  public:
-  MudcrackYState(std::shared_ptr<const Game> game, int board_size,
+  GeodesicYState(std::shared_ptr<const Game> game, int board_size,
          bool ansi_color_output = false);
 
-  MudcrackYState(const MudcrackYState&) = default;
+  GeodesicYState(const GeodesicYState&) = default;
 
   Player CurrentPlayer() const override {
     return IsTerminal() ? kTerminalPlayerId : static_cast<int>(current_player_);
@@ -133,8 +133,8 @@ class MudcrackYState : public State {
 
  private:
   std::vector<Cell> board_;
-  MudcrackYPlayer current_player_ = kPlayer1;
-  MudcrackYPlayer outcome_ = kPlayerNone;
+  GeodesicYPlayer current_player_ = kPlayer1;
+  GeodesicYPlayer outcome_ = kPlayerNone;
   const int board_size_;
   uint16_t moves_made_ = 0;
   // The last move is initialized to the size of the graph
@@ -145,23 +145,23 @@ class MudcrackYState : public State {
 };
 
 // Game object.
-class MudcrackYGame : public Game {
+class GeodesicYGame : public Game {
  public:
-  explicit MudcrackYGame(const GameParameters& params);
+  explicit GeodesicYGame(const GameParameters& params);
 
   int NumDistinctActions() const override {
     return board_size_;
   }
   std::unique_ptr<State> NewInitialState() const override {
     return std::unique_ptr<State>(
-        new MudcrackYState(shared_from_this(), board_size_, ansi_color_output_));
+        new GeodesicYState(shared_from_this(), board_size_, ansi_color_output_));
   }
   int NumPlayers() const override { return kNumPlayers; }
   double MinUtility() const override { return -1; }
   double UtilitySum() const override { return 0; }
   double MaxUtility() const override { return 1; }
   std::shared_ptr<const Game> Clone() const override {
-    return std::shared_ptr<const Game>(new MudcrackYGame(*this));
+    return std::shared_ptr<const Game>(new GeodesicYGame(*this));
   }
   std::vector<int> ObservationTensorShape() const override {
     return {kCellStates, board_size_, board_size_};
@@ -178,7 +178,7 @@ class MudcrackYGame : public Game {
   const bool ansi_color_output_ = false;
 };
 
-}  // namespace mudcrack_y_game
+}  // namespace geodesic_y_game
 }  // namespace open_spiel
 
-#endif  // OPEN_SPIEL_GAMES_MUDCRACK_Y_H_
+#endif  // OPEN_SPIEL_GAMES_GEODESIC_Y_H_

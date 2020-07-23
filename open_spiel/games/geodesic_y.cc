@@ -42,7 +42,7 @@ const GameType kGameType{/*short_name=*/"geodesic_y",
                          /*provides_observation_tensor=*/true,
                          /*parameter_specification=*/
                          {
-                             {"board_size", GameParameter(kDefaultBoardSize)},
+                             {"base_size", GameParameter(kDefaultBaseSize)},
                              {"ansi_color_output", GameParameter(false)},
                          }};
 
@@ -54,43 +54,148 @@ REGISTER_SPIEL_GAME(kGameType, Factory);
 
 }  // namespace
 
-// Neighbors for base3 geodesic Y (the default game)
-static const Neighbors neighbors = {
-  {1, 2, 3, 4, 8},
-  {0, 2, 4, 5, 6},
-  {0, 1, 6, 7, 8},
-  {0, 4, 8},
-  {0, 1, 3, 5},
-  {1, 4, 6},
-  {1, 2, 5, 7},
-  {2, 6, 8},
-  {0, 2, 3, 7},
-};
+// A cache of the neighbors for each geodesic Y board
+static std::vector<Neighbors> neighbors_list;
 
-// The board edges that each node touches.
-static const std::vector<Edge> edges = {
-  kNone, kNone, kNone,
-  (Edge)(kRight | kLeft),
-  kRight,
-  (Edge)(kRight | kBottom),
-  kBottom,
-  (Edge)(kBottom | kLeft),
-  kLeft,
-};
+static Node topNode(uint16_t base_size) {
+  // The smallest node of the outer ring is equal to the size of the
+  // base - 1 board. This even works when the base size is 2, where
+  // the inner ring then has size 0.
+  return boardSize(base_size - 1);
+}
+
+static Node rightNode(uint16_t base_size) {
+  return topNode(base_size) + base_size - 1;
+}
+
+static Node leftNode(uint16_t base_size) {
+  return rightNode(base_size) + base_size - 1;
+}
+
+static Neighbors generateNeighbors(uint16_t base_size) {
+
+  Node board_size = boardSize(base_size);
+
+  Neighbors neighbors{};
+  neighbors.resize(board_size);
+
+  neighbors.at(0).push_back(1);
+  neighbors.at(1).push_back(2);
+  neighbors.at(2).push_back(0);
+
+  // This loop will be skipped if base_size == 2
+  for (uint16_t ring = 3; ring <= base_size; ++ring) {
+
+    Node top = topNode(ring);
+    Node right = rightNode(ring);
+    Node left = leftNode(ring);
+
+    Node ring_size = topNode(ring + 1);
+    Node last = ring_size - 1;
+
+    for (Node cell = top; cell < ring_size; ++cell) {
+
+      // Add the next node clockwise in the ring
+      if (cell == last) {
+        neighbors.at(cell).push_back(top);
+      } else {
+        neighbors.at(cell).push_back(cell + 1);
+      }
+
+      // Now add the cells in the layer below
+      Node top_below = topNode(ring - 1);
+      Node right_below = rightNode(ring - 1);
+      Node left_below = leftNode(ring - 1);
+
+      if (cell == top) {
+        neighbors.at(cell).push_back(top_below);
+      } else if ((top < cell) && (cell < right)) {
+        Node nhbr = top_below + cell - top;
+        neighbors.at(cell).push_back(nhbr - 1);
+        neighbors.at(cell).push_back(nhbr);
+      } else if (cell == right) {
+        neighbors.at(cell).push_back(right_below);
+      } else if ((right < cell) && (cell < left)) {
+        Node nhbr = right_below + cell - right;
+        neighbors.at(cell).push_back(nhbr - 1);
+        neighbors.at(cell).push_back(nhbr);
+      } else if (cell == left) {
+        neighbors.at(cell).push_back(left_below);
+      } else if (cell < last) {
+        Node nhbr = left_below + cell - left;
+        neighbors.at(cell).push_back(nhbr - 1);
+        neighbors.at(cell).push_back(nhbr);
+      } else if (cell == last) {
+      	Node nhbr = left_below + cell - left;
+      	neighbors.at(cell).push_back(nhbr - 1);
+      	neighbors.at(cell).push_back(top_below);
+      } else {
+      	throw std::runtime_error("unknown cell");
+      }
+    }
+  }
+
+  // Make the graph symmetric
+  Neighbors symmetric = neighbors;
+
+  for (Node i = 0; i < neighbors.size(); ++i) {
+    for (Node j : neighbors.at(i)) {
+      symmetric.at(j).push_back(i);
+    }
+  }
+
+  for (auto& vec : symmetric) {
+  	std::sort(std::begin(vec), std::end(vec));
+  }
+
+  return symmetric;
+}
+
+static const Neighbors& getNeighbors(const uint16_t board_size) {
+  // Extend the list if the board_size isn't present
+  if (board_size >= neighbors_list.size()) {
+    neighbors_list.resize(board_size + 1);
+  }
+
+  if (neighbors_list.at(board_size).empty()) {
+    neighbors_list.at(board_size) = generateNeighbors(board_size);
+  }
+  return neighbors_list.at(board_size);
+}
+
+static Edge getEdge(Node node, uint16_t base_size) {
+
+  Node top = topNode(base_size);
+  Node right = rightNode(base_size);
+  Node left = leftNode(base_size);
+
+  Edge edge = kNone;
+  if ((top <= node) && (node <= right)) {
+    edge = (Edge)(edge | kRight);
+  }
+  if ((right <= node) && (node <= left)) {
+    edge = (Edge)(edge | kBottom);
+  }
+  if ((left <= node) || (node == top)) {
+    edge = (Edge)(edge | kLeft);
+  }
+
+  return edge;
+}
 
 std::string Move::ToString() const {
   return std::to_string(node);
 }
 
-GeodesicYState::GeodesicYState(std::shared_ptr<const Game> game, int board_size,
+GeodesicYState::GeodesicYState(std::shared_ptr<const Game> game, int base_size,
                bool ansi_color_output)
     : State(game),
-      board_size_(board_size),
-      neighbors_(neighbors),
+      base_size_(base_size),
+      neighbors_(getNeighbors(base_size)),
       ansi_color_output_(ansi_color_output) {
-  board_.resize(board_size_);
+  board_.resize(boardSize(base_size));
   for (Node i = 0; i < board_.size(); i++) {
-    board_.at(i) = Cell(kPlayerNone, i, edges.at(i));
+    board_.at(i) = Cell(kPlayerNone, i, getEdge(i, base_size));
   }
 }
 
@@ -316,7 +421,7 @@ std::unique_ptr<State> GeodesicYState::Clone() const {
 
 GeodesicYGame::GeodesicYGame(const GameParameters& params)
     : Game(kGameType, params),
-      board_size_(ParameterValue<int>("board_size")),
+      base_size_(ParameterValue<int>("base_size")),
       ansi_color_output_(ParameterValue<bool>("ansi_color_output")) {}
 
 }  // namespace geodesic_y_game

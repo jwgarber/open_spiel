@@ -28,7 +28,7 @@
 // Does not implement pie rule to balance the game
 //
 // Parameters:
-//   "board_size"        int     size of the board   (default = 9)
+//   "base_size"         int     size of the base of the board (default = 3)
 //   "ansi_color_output" bool    Whether to color the output for a terminal.
 
 namespace open_spiel {
@@ -39,10 +39,8 @@ using Node = uint16_t;
 // Adjacency list for the graph
 using Neighbors = std::vector<std::vector<Node>>;
 
-// Default board will be base 3 geodesic Y, which has 9 nodes
-
 inline constexpr int kNumPlayers = 2;
-inline constexpr int kDefaultBoardSize = 9;
+inline constexpr int kDefaultBaseSize = 3;
 inline constexpr int kCellStates = 1 + kNumPlayers;
 
 enum GeodesicYPlayer : uint8_t {
@@ -57,6 +55,10 @@ enum Edge : uint8_t {
   kBottom = 0x2,
   kLeft = 0x4,
 };
+
+inline constexpr Node boardSize(uint16_t base_size) {
+  return 3 * base_size * (base_size - 1) / 2;
+}
 
 struct Move {
   Node node;
@@ -96,7 +98,7 @@ class GeodesicYState : public State {
   };
 
  public:
-  GeodesicYState(std::shared_ptr<const Game> game, int board_size,
+  GeodesicYState(std::shared_ptr<const Game> game, int base_size,
          bool ansi_color_output = false);
 
   GeodesicYState(const GeodesicYState&) = default;
@@ -135,11 +137,11 @@ class GeodesicYState : public State {
   std::vector<Cell> board_;
   GeodesicYPlayer current_player_ = kPlayer1;
   GeodesicYPlayer outcome_ = kPlayerNone;
-  const int board_size_;
+  const uint16_t base_size_;
   uint16_t moves_made_ = 0;
-  // The last move is initialized to the size of the graph
-  // since at the beginning there are no previous moves.
-  Move last_move_ = Move(board_size_);
+  // This is an invalid move, so we use it as a sentinel for
+  // the beginning of the game when there is no last move.
+  Move last_move_ = Move(boardSize(base_size_));
   const Neighbors& neighbors_;
   const bool ansi_color_output_;
 };
@@ -150,11 +152,11 @@ class GeodesicYGame : public Game {
   explicit GeodesicYGame(const GameParameters& params);
 
   int NumDistinctActions() const override {
-    return board_size_;
+    return boardSize(base_size_);
   }
   std::unique_ptr<State> NewInitialState() const override {
     return std::unique_ptr<State>(
-        new GeodesicYState(shared_from_this(), board_size_, ansi_color_output_));
+        new GeodesicYState(shared_from_this(), base_size_, ansi_color_output_));
   }
   int NumPlayers() const override { return kNumPlayers; }
   double MinUtility() const override { return -1; }
@@ -164,17 +166,17 @@ class GeodesicYGame : public Game {
     return std::shared_ptr<const Game>(new GeodesicYGame(*this));
   }
   std::vector<int> ObservationTensorShape() const override {
-    return {kCellStates, board_size_, board_size_};
+    return {kCellStates, base_size_, base_size_};
   }
   int MaxGameLength() const override {
     // The true number of playable cells on the board.
     // No stones are removed, and someone will win by filling the board.
     // Increase this by one if swap is ever implemented.
-    return board_size_;
+    return boardSize(base_size_);
   }
 
  private:
-  const int board_size_;
+  const int base_size_;
   const bool ansi_color_output_ = false;
 };
 

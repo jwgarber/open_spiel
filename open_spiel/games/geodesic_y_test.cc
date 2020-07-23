@@ -23,26 +23,24 @@ namespace {
 namespace testing = open_spiel::testing;
 
 void BasicGeodesicYTests() {
-  testing::LoadGameTest("geodesic_y(board_size=9)");
-  testing::NoChanceOutcomesTest(*LoadGame("geodesic_y(board_size=9)"));
+  testing::LoadGameTest("geodesic_y(base_size=9)");
+  testing::NoChanceOutcomesTest(*LoadGame("geodesic_y(base_size=9)"));
 
-#if 0
   testing::RandomSimTest(*LoadGame("geodesic_y"), 10);
 
   // All the sizes we care about.
   for (int i = 5; i <= 26; i++) {
-    testing::RandomSimTest(*LoadGame(absl::StrCat("geodesic_y(board_size=", i, ")")),
+    testing::RandomSimTest(*LoadGame(absl::StrCat("geodesic_y(base_size=", i, ")")),
                            10);
   }
 
   // Ansi colors!
   testing::RandomSimTest(
-      *LoadGame("geodesic_y", {{"board_size", GameParameter(9)},
+      *LoadGame("geodesic_y", {{"base_size", GameParameter(9)},
                       {"ansi_color_output", GameParameter(true)}}),
       1);
-  testing::RandomSimTest(*LoadGame("geodesic_y(board_size=10,ansi_color_output=True)"),
+  testing::RandomSimTest(*LoadGame("geodesic_y(base_size=10,ansi_color_output=True)"),
                          3);
-#endif
 }
 
 }  // namespace

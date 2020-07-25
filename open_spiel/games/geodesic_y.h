@@ -40,7 +40,7 @@ using Node = uint16_t;
 using Neighbors = std::vector<std::vector<Node>>;
 
 inline constexpr int kNumPlayers = 2;
-inline constexpr int kDefaultBaseSize = 3;
+inline constexpr int kDefaultBaseSize = 5;
 inline constexpr int kCellStates = 1 + kNumPlayers;
 
 enum GeodesicYPlayer : uint8_t {

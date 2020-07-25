@@ -166,7 +166,7 @@ class GeodesicYGame : public Game {
     return std::shared_ptr<const Game>(new GeodesicYGame(*this));
   }
   std::vector<int> ObservationTensorShape() const override {
-    return {kCellStates, base_size_, base_size_};
+    return {kCellStates, boardSize(base_size_)};
   }
   int MaxGameLength() const override {
     // The true number of playable cells on the board.

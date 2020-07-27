@@ -359,6 +359,36 @@ void GeodesicYState::ObservationTensor(Player player,
   }
 }
 
+void GeodesicYState::ResetBoard() {
+
+  // Reset the board to its initial state
+  // We may want to set the board back to some initial state,
+  // and I think we may then have to save that information somewhere
+  // in the constructor with initial state and player to move
+
+  for (Node i = 0; i < board_.size(); i++) {
+    board_.at(i) = Cell(kPlayerNone, i, getEdge(i, base_size_));
+  }
+
+  current_player_ = kPlayer1;
+  outcome_ = kPlayerNone;
+  moves_made_ = 0;
+  last_move_ = Move(boardSize(base_size_));
+}
+
+void GeodesicYState::UndoAction(Player player, Action move) {
+  // UF groupings change when an action is played, so to undo that
+  // action we also need to "undo-union" the groups. A little bit
+  // of work to do, so just reset the board and replay the moves
+  // (like in Go).
+  history_.pop_back();
+  ResetBoard();
+
+  for (auto [_, action] : history_) {
+    DoApplyAction(action);
+  }
+}
+
 void GeodesicYState::DoApplyAction(Action action) {
   SPIEL_CHECK_EQ(board_.at(action).player, kPlayerNone);
   SPIEL_CHECK_EQ(outcome_, kPlayerNone);

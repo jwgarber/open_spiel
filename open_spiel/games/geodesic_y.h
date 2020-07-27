@@ -118,6 +118,7 @@ class GeodesicYState : public State {
   void ObservationTensor(Player player,
                          std::vector<double>* values) const override;
   std::unique_ptr<State> Clone() const override;
+  void UndoAction(Player player, Action move) override;
   std::vector<Action> LegalActions() const override;
 
  protected:
@@ -134,6 +135,8 @@ class GeodesicYState : public State {
   Move ActionToMove(Action action_id) const;
 
  private:
+  void ResetBoard();
+
   std::vector<Cell> board_;
   GeodesicYPlayer current_player_ = kPlayer1;
   GeodesicYPlayer outcome_ = kPlayerNone;

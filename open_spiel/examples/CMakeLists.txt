@@ -11,6 +11,9 @@ add_test(cfr_example_test cfr_example)
 add_executable(example example.cc ${OPEN_SPIEL_OBJECTS})
 add_test(example_test example --game=tic_tac_toe --seed=0)
 
+add_executable(geodesic geodesic.cc ${OPEN_SPIEL_OBJECTS})
+add_test(geodesic_test geodesic)
+
 add_executable(gtp gtp.cc ${OPEN_SPIEL_OBJECTS})
 
 add_executable(matrix_example matrix_example.cc ${OPEN_SPIEL_CORE_OBJECTS})

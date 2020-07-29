@@ -43,6 +43,7 @@ const GameType kGameType{/*short_name=*/"geodesic_y",
                          /*parameter_specification=*/
                          {
                              {"base_size", GameParameter(kDefaultBaseSize)},
+                             {"starting_player", GameParameter(std::string("black"))},
                              {"ansi_color_output", GameParameter(false)},
                          }};
 
@@ -187,10 +188,22 @@ std::string Move::ToString() const {
   return std::to_string(node);
 }
 
+static GeodesicYPlayer getStartingPlayer(const std::string& player) {
+  if (player == "black") {
+    return kPlayer1;
+  }
+  if (player == "white") {
+    return kPlayer2;
+  }
+  SpielFatalError(absl::StrCat("Unknown player ", player));
+}
+
 GeodesicYState::GeodesicYState(std::shared_ptr<const Game> game, int base_size,
+               const std::string& starting_player,
                bool ansi_color_output)
     : State(game),
       base_size_(base_size),
+      starting_player_(getStartingPlayer(starting_player)),
       neighbors_(getNeighbors(base_size)),
       ansi_color_output_(ansi_color_output) {
   board_.resize(boardSize(base_size));
@@ -361,16 +374,11 @@ void GeodesicYState::ObservationTensor(Player player,
 
 void GeodesicYState::ResetBoard() {
 
-  // Reset the board to its initial state
-  // We may want to set the board back to some initial state,
-  // and I think we may then have to save that information somewhere
-  // in the constructor with initial state and player to move
-
   for (Node i = 0; i < board_.size(); i++) {
     board_.at(i) = Cell(kPlayerNone, i, getEdge(i, base_size_));
   }
 
-  current_player_ = kPlayer1;
+  current_player_ = starting_player_;
   outcome_ = kPlayerNone;
   moves_made_ = 0;
   last_move_ = Move(boardSize(base_size_));
@@ -378,9 +386,8 @@ void GeodesicYState::ResetBoard() {
 
 void GeodesicYState::UndoAction(Player player, Action move) {
   // UF groupings change when an action is played, so to undo that
-  // action we also need to "undo-union" the groups. A little bit
-  // of work to do, so just reset the board and replay the moves
-  // (like in Go).
+  // action we also need to "undo-union" the groups. That's tricky,
+  // just reset the board and replay the moves (like in Go).
   history_.pop_back();
   ResetBoard();
 
@@ -452,6 +459,7 @@ std::unique_ptr<State> GeodesicYState::Clone() const {
 GeodesicYGame::GeodesicYGame(const GameParameters& params)
     : Game(kGameType, params),
       base_size_(ParameterValue<int>("base_size")),
+      starting_player_(ParameterValue<std::string>("starting_player")),
       ansi_color_output_(ParameterValue<bool>("ansi_color_output")) {}
 
 }  // namespace geodesic_y_game

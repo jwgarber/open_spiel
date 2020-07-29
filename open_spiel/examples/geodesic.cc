@@ -23,14 +23,27 @@
 #include "open_spiel/games/geodesic_y.h"
 
 ABSL_FLAG(int, base_size, 3, "The base size of the board.");
+ABSL_FLAG(std::string, player, "black", "The starting player (black or white).");
 
 int main(int argc, char** argv) {
 
   absl::ParseCommandLine(argc, argv);
   const auto base_size = absl::GetFlag(FLAGS_base_size);
+  const auto player_str = absl::GetFlag(FLAGS_player);
+
+  open_spiel::Player player;
+  if (player_str == "black") {
+    player = 0;
+  } else if (player_str == "white") {
+    player = 1;
+  } else {
+    std::cout << "Invalid player: " << player_str << std::endl;
+    return 0;
+  }
 
   open_spiel::GameParameters params;
   params["base_size"] = open_spiel::GameParameter(base_size);
+  params["starting_player"] = open_spiel::GameParameter(player_str);
 
   std::shared_ptr<const open_spiel::Game> game = open_spiel::LoadGame("geodesic_y", params);
 
@@ -61,7 +74,7 @@ int main(int argc, char** argv) {
       std::cout << action << ' ';
     }
 
-    state->UndoAction(0, action);
+    state->UndoAction(player, action);
   }
   std::cout << std::endl;
 }

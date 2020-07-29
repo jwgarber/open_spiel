@@ -43,7 +43,25 @@ int main(int argc, char** argv) {
 
   std::cout << "Running alpha-beta on board with base size " << base_size << std::endl;
 
-  auto p = open_spiel::algorithms::AlphaBetaSearch(*game, nullptr, nullptr, depth, open_spiel::geodesic_y_game::kPlayer1);
-  std::cout << "value = " << p.first << std::endl;
-  std::cout << "action = " << p.second << std::endl;
+  std::unique_ptr<open_spiel::State> state = game->NewInitialState();
+  std::vector<open_spiel::Action> actions = state->LegalActions();
+
+  // Iterate over all available actions, and as the current player, play that action.
+  // Then do an alpha-beta search from that position as the opponent. If they lose,
+  // then that was a winning move for the first player.
+  std::cout << "Winning moves: ";
+  for (const auto action : actions) {
+    state->ApplyAction(action);
+
+    // Performs an alpha-beta search from the current state with the current player
+    auto p = open_spiel::algorithms::AlphaBetaSearch(*game, state.get(), nullptr, depth, open_spiel::kInvalidPlayer);
+
+    if (p.first == -1.0) {
+      // The second player lost, so this is a winning move for the first player
+      std::cout << action << ' ';
+    }
+
+    state->UndoAction(0, action);
+  }
+  std::cout << std::endl;
 }

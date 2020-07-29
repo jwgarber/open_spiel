@@ -29,6 +29,7 @@
 //
 // Parameters:
 //   "base_size"         int     size of the base of the board (default = 3)
+//   "starting_player"   string  starting player for the board
 //   "ansi_color_output" bool    Whether to color the output for a terminal.
 
 namespace open_spiel {
@@ -99,6 +100,7 @@ class GeodesicYState : public State {
 
  public:
   GeodesicYState(std::shared_ptr<const Game> game, int base_size,
+         const std::string& starting_player,
          bool ansi_color_output = false);
 
   GeodesicYState(const GeodesicYState&) = default;
@@ -138,7 +140,8 @@ class GeodesicYState : public State {
   void ResetBoard();
 
   std::vector<Cell> board_;
-  GeodesicYPlayer current_player_ = kPlayer1;
+  const GeodesicYPlayer starting_player_;
+  GeodesicYPlayer current_player_ = starting_player_;
   GeodesicYPlayer outcome_ = kPlayerNone;
   const uint16_t base_size_;
   uint16_t moves_made_ = 0;
@@ -159,7 +162,7 @@ class GeodesicYGame : public Game {
   }
   std::unique_ptr<State> NewInitialState() const override {
     return std::unique_ptr<State>(
-        new GeodesicYState(shared_from_this(), base_size_, ansi_color_output_));
+        new GeodesicYState(shared_from_this(), base_size_, starting_player_, ansi_color_output_));
   }
   int NumPlayers() const override { return kNumPlayers; }
   double MinUtility() const override { return -1; }
@@ -180,6 +183,7 @@ class GeodesicYGame : public Game {
 
  private:
   const int base_size_;
+  const std::string starting_player_;
   const bool ansi_color_output_ = false;
 };
 

@@ -44,6 +44,7 @@ const GameType kGameType{/*short_name=*/"geodesic_y",
                          {
                              {"base_size", GameParameter(kDefaultBaseSize)},
                              {"starting_player", GameParameter(std::string("black"))},
+                             {"starting_board", GameParameter(std::string(""))},
                              {"ansi_color_output", GameParameter(false)},
                          }};
 
@@ -188,27 +189,71 @@ std::string Move::ToString() const {
   return std::to_string(node);
 }
 
-static GeodesicYPlayer getStartingPlayer(const std::string& player) {
-  if (player == "black") {
+static GeodesicYPlayer getStartingPlayer(const std::string& player_str) {
+  if (player_str == "black") {
     return kPlayer1;
   }
-  if (player == "white") {
+  if (player_str == "white") {
     return kPlayer2;
   }
-  SpielFatalError(absl::StrCat("Unknown player ", player));
+  SpielFatalError(absl::StrCat("Unknown player ", player_str));
+}
+
+static std::vector<GeodesicYPlayer> getStartingBoard(const uint16_t base_size,
+                                                     const std::string& board_str) {
+
+  const auto board_size = boardSize(base_size);
+
+  std::vector<GeodesicYPlayer> board(board_size, kPlayerNone);
+
+  const std::vector<std::string> split = absl::StrSplit(board_str, ' ', absl::SkipEmpty());
+  for (const auto& str : split) {
+    if (str.size() < 2) {
+      SpielFatalError(absl::StrCat("Invalid configuration ", str));
+    }
+
+    const char player = str.at(0);
+
+    const uint32_t pos = std::stoul(str.substr(1));
+    if (pos >= board_size) {
+      SpielFatalError(absl::StrCat("Invalid position ", std::to_string(pos)));
+    }
+
+    if (player == 'B') {
+      board.at(pos) = kPlayer1;
+    } else if (player == 'W') {
+      board.at(pos) = kPlayer2;
+    } else {
+      SpielFatalError(absl::StrCat("Invalid player ", std::string(1, player)));
+    }
+  }
+
+  return board;
 }
 
 GeodesicYState::GeodesicYState(std::shared_ptr<const Game> game, int base_size,
                const std::string& starting_player,
+               const std::string& starting_board,
                bool ansi_color_output)
     : State(game),
       base_size_(base_size),
       starting_player_(getStartingPlayer(starting_player)),
+      starting_board_(getStartingBoard(base_size, starting_board)),
       neighbors_(getNeighbors(base_size)),
       ansi_color_output_(ansi_color_output) {
+
+  // Initialize an empty board
   board_.resize(boardSize(base_size));
   for (Node i = 0; i < board_.size(); i++) {
     board_.at(i) = Cell(kPlayerNone, i, getEdge(i, base_size));
+  }
+
+  // Then, place all the initial cells, without changing any state
+  for (Node i = 0; i < board_.size(); i++) {
+    GeodesicYPlayer player = starting_board_.at(i);
+    if (player != kPlayerNone) {
+      PlayCell(player, i);
+    }
   }
 }
 
@@ -374,14 +419,23 @@ void GeodesicYState::ObservationTensor(Player player,
 
 void GeodesicYState::ResetBoard() {
 
-  for (Node i = 0; i < board_.size(); i++) {
-    board_.at(i) = Cell(kPlayerNone, i, getEdge(i, base_size_));
-  }
-
   current_player_ = starting_player_;
   outcome_ = kPlayerNone;
   moves_made_ = 0;
   last_move_ = Move(boardSize(base_size_));
+
+  // Reset the board back to empty
+  for (Node i = 0; i < board_.size(); i++) {
+    board_.at(i) = Cell(kPlayerNone, i, getEdge(i, base_size_));
+  }
+
+  // Now set the starting board state
+  for (Node i = 0; i < board_.size(); i++) {
+    GeodesicYPlayer player = starting_board_.at(i);
+    if (player != kPlayerNone) {
+      PlayCell(player, i);
+    }
+  }
 }
 
 void GeodesicYState::UndoAction(Player player, Action move) {
@@ -393,6 +447,22 @@ void GeodesicYState::UndoAction(Player player, Action move) {
 
   for (auto [_, action] : history_) {
     DoApplyAction(action);
+  }
+}
+
+void GeodesicYState::PlayCell(GeodesicYPlayer player, Node cell) {
+
+  board_.at(cell).player = player;
+
+  for (Node nhbr : neighbors_.at(cell)) {
+    if (board_.at(nhbr).player == player) {
+      JoinGroups(cell, nhbr);
+    }
+  }
+
+  // The starting board should not win the game
+  if (board_.at(FindGroupLeader(cell)).edge == (kRight | kBottom | kLeft)) {
+    SpielFatalError(std::string("Starting board cannot be already won"));
   }
 }
 
@@ -460,6 +530,7 @@ GeodesicYGame::GeodesicYGame(const GameParameters& params)
     : Game(kGameType, params),
       base_size_(ParameterValue<int>("base_size")),
       starting_player_(ParameterValue<std::string>("starting_player")),
+      starting_board_(ParameterValue<std::string>("starting_board")),
       ansi_color_output_(ParameterValue<bool>("ansi_color_output")) {}
 
 }  // namespace geodesic_y_game

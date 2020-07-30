@@ -22,14 +22,16 @@
 #include "open_spiel/algorithms/minimax.h"
 #include "open_spiel/games/geodesic_y.h"
 
-ABSL_FLAG(int, base_size, 3, "The base size of the board.");
+ABSL_FLAG(int, base, 3, "The base size of the board.");
 ABSL_FLAG(std::string, player, "black", "The starting player (black or white).");
+ABSL_FLAG(std::string, board, "", "The starting board configuration.");
 
 int main(int argc, char** argv) {
 
   absl::ParseCommandLine(argc, argv);
-  const auto base_size = absl::GetFlag(FLAGS_base_size);
+  const auto base_size = absl::GetFlag(FLAGS_base);
   const auto player_str = absl::GetFlag(FLAGS_player);
+  const auto board_str = absl::GetFlag(FLAGS_board);
 
   open_spiel::Player player;
   if (player_str == "black") {
@@ -44,6 +46,7 @@ int main(int argc, char** argv) {
   open_spiel::GameParameters params;
   params["base_size"] = open_spiel::GameParameter(base_size);
   params["starting_player"] = open_spiel::GameParameter(player_str);
+  params["starting_board"] = open_spiel::GameParameter(board_str);
 
   std::shared_ptr<const open_spiel::Game> game = open_spiel::LoadGame("geodesic_y", params);
 
@@ -54,7 +57,7 @@ int main(int argc, char** argv) {
 
   auto depth = open_spiel::geodesic_y_game::boardSize(base_size);
 
-  std::cout << "Running alpha-beta on board with base size " << base_size << std::endl;
+  std::cout << "Running alpha-beta for " << player_str << " on board with base size " << base_size << std::endl;
 
   std::unique_ptr<open_spiel::State> state = game->NewInitialState();
   std::vector<open_spiel::Action> actions = state->LegalActions();

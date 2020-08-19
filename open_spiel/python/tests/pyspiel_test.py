@@ -51,6 +51,7 @@ class PyspielTest(absltest.TestCase):
         "deep_sea",
         "efg_game",
         "first_sealed_auction",
+        "geodesic_y",
         "gin_rummy",
         "go",
         "goofspiel",
